@@ -46,7 +46,7 @@ static bool debugMode = false;
 static bool forceRPath = false;
 
 static std::vector<std::string> fileNames;
-static int pageSize = PAGESIZE;
+static int pageSize = sysconf(_SC_PAGESIZE);
 
 typedef std::shared_ptr<std::vector<unsigned char>> FileContents;
 
@@ -1741,7 +1741,7 @@ int mainWrapped(int argc, char * * argv)
             return 0;
         }
         else if (arg == "--version") {
-            printf(PACKAGE_STRING "\n");
+            printf("https://github.com/dmikushin/install_name_tool\n");
             return 0;
         }
         else {
@@ -1754,14 +1754,4 @@ int mainWrapped(int argc, char * * argv)
     patchElf();
 
     return 0;
-}
-
-int main(int argc, char * * argv)
-{
-    try {
-        return mainWrapped(argc, argv);
-    } catch (std::exception & e) {
-        fprintf(stderr, "patchelf: %s\n", e.what());
-        return 1;
-    }
 }

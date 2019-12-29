@@ -26,10 +26,8 @@
 #include <limits.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "stuff/errors.h"
-#include "stuff/breakout.h"
-#include "stuff/rnd.h"
-#include "stuff/allocate.h"
+#include <stdint.h>
+#include <stdbool.h>
 
 /* used by error routines as the name of the program */
 char *progname = NULL;
@@ -68,7 +66,7 @@ static uint32_t nchanges = 0;
 struct rpaths {
     char *old;
     char *new;
-    enum bool found;
+    bool found;
 };
 static struct rpaths *rpaths = NULL;
 static uint32_t nrpaths = 0;
@@ -83,7 +81,7 @@ static uint32_t nadd_rpaths = 0;
 /* the arguments to the -delete_rpath options */
 struct delete_rpaths {
     char *old;
-    enum bool found;
+    bool found;
 };
 static struct delete_rpaths *delete_rpaths = NULL;
 static uint32_t ndelete_rpaths = 0;
@@ -102,9 +100,7 @@ static uint32_t *arch_header_sizes = NULL;
  */
 #undef OUTPUT_OPTION
 
-/* apple_version is created by the libstuff/Makefile */
-extern char apple_version[];
-char *version = apple_version;
+const char *version = "https://github.com/dmikushin/install_name_tool";
 
 /*
  * The install_name_tool allow the dynamic shared library install names of a
@@ -179,7 +175,7 @@ char **envp)
 		    error("missing argument(s) to: %s option", argv[i]);
 		    usage();
 		}
-		changes = reallocate(changes,
+		changes = realloc(changes,
 				     sizeof(struct changes) * (nchanges + 1));
 		changes[nchanges].old = argv[i+1];
 		changes[nchanges].new = argv[i+2];
@@ -230,11 +226,11 @@ char **envp)
 			usage();
 		    }
 		}
-		rpaths = reallocate(rpaths,
+		rpaths = realloc(rpaths,
 				    sizeof(struct rpaths) * (nrpaths + 1));
 		rpaths[nrpaths].old = argv[i+1];
 		rpaths[nrpaths].new = argv[i+2];
-		rpaths[nrpaths].found = FALSE;
+		rpaths[nrpaths].found = false;
 		nrpaths += 1;
 		i += 2;
 	    }
@@ -267,7 +263,7 @@ char **envp)
 			usage();
 		    }
 		}
-		add_rpaths = reallocate(add_rpaths,
+		add_rpaths = realloc(add_rpaths,
 				sizeof(struct add_rpaths) * (nadd_rpaths + 1));
 		add_rpaths[nadd_rpaths].new = argv[i+1];
 		nadd_rpaths += 1;
@@ -302,11 +298,11 @@ char **envp)
 			usage();
 		    }
 		}
-		delete_rpaths = reallocate(delete_rpaths,
+		delete_rpaths = realloc(delete_rpaths,
 				sizeof(struct delete_rpaths) *
 					(ndelete_rpaths + 1));
 		delete_rpaths[ndelete_rpaths].old = argv[i+1];
-		delete_rpaths[ndelete_rpaths].found = FALSE;
+		delete_rpaths[ndelete_rpaths].found = false;
 		ndelete_rpaths += 1;
 		i += 1;
 	    }
@@ -322,8 +318,8 @@ char **envp)
 	if(input == NULL || (id == NULL && nchanges == 0 && nrpaths == 0 &&
 	   nadd_rpaths == 0 && ndelete_rpaths == 0))
 	    usage();
-
-	breakout(input, &archs, &narchs, FALSE);
+#if 0
+	breakout(input, &archs, &narchs, false);
 	if(errors)
 	    exit(EXIT_FAILURE);
 
@@ -337,7 +333,7 @@ char **envp)
 	    exit(EXIT_FAILURE);
 
 	if(output != NULL)
-	    writeout(archs, narchs, output, 0777, TRUE, FALSE, FALSE, NULL);
+	    writeout(archs, narchs, output, 0777, true, false, false, NULL);
 	else
 	    write_on_input(archs, narchs, input);
 
@@ -345,6 +341,9 @@ char **envp)
 	    return(EXIT_FAILURE);
 	else
 	    return(EXIT_SUCCESS);
+#else
+	return(EXIT_SUCCESS);
+#endif
 }
 
 /*
@@ -364,6 +363,8 @@ void)
 		"\n", progname);
 	exit(EXIT_FAILURE);
 }
+
+#if 0
 
 static
 void
@@ -452,7 +453,7 @@ char *input)
 		*mh = *(archs[i].object->mh);
 		memcpy(lc, archs[i].object->load_commands, mh->sizeofcmds);
 		if(archs[i].object->object_byte_sex != host_byte_sex)
-		    if(swap_object_headers(mh, lc) == FALSE)
+		    if(swap_object_headers(mh, lc) == false)
 			fatal("internal error: swap_object_headers() failed");
 	    }
 	    else{
@@ -462,7 +463,7 @@ char *input)
 		*mh64 = *(archs[i].object->mh64);
 		memcpy(lc, archs[i].object->load_commands, mh64->sizeofcmds);
 		if(archs[i].object->object_byte_sex != host_byte_sex)
-		    if(swap_object_headers(mh64, lc) == FALSE)
+		    if(swap_object_headers(mh64, lc) == false)
 			fatal("internal error: swap_object_headers() failed");
 	    }
 
@@ -790,9 +791,9 @@ uint32_t *header_size)
 		}
 		for(j = 0; j < nrpaths; j++){
 		    if(strcmp(rpaths[j].old, path1) == 0){
-			if(rpaths[j].found == TRUE)
+			if(rpaths[j].found == true)
 			    break;
-			rpaths[j].found = TRUE;
+			rpaths[j].found = true;
 			new_size = rnd(sizeof(struct rpath_command) +
 				         strlen(rpaths[j].new) + 1,
 					 cmd_round);
@@ -802,9 +803,9 @@ uint32_t *header_size)
 		}
 		for(j = 0; j < ndelete_rpaths; j++){
 		    if(strcmp(delete_rpaths[j].old, path1) == 0){
-			if(delete_rpaths[j].found == TRUE)
+			if(delete_rpaths[j].found == true)
 			    break;
-			delete_rpaths[j].found = TRUE;
+			delete_rpaths[j].found = true;
 			new_sizeofcmds -= rpath1->cmdsize;
 			break;
 		    }
@@ -815,22 +816,22 @@ uint32_t *header_size)
 	}
 
 	for(i = 0; i < ndelete_rpaths; i++){
-	    if(delete_rpaths[i].found == FALSE){
+	    if(delete_rpaths[i].found == false){
 		error("no LC_RPATH load command with path: %s found in: "
 		      "%s (for architecture %s), required for specified option "
 		      "\"-delete_rpath %s\"", delete_rpaths[i].old,
 		      arch->file_name, arch_name, delete_rpaths[i].old);
 	    }
-	    delete_rpaths[i].found = FALSE;
+	    delete_rpaths[i].found = false;
 	}
 	for(i = 0; i < nrpaths; i++){
-	    if(rpaths[i].found == FALSE){
+	    if(rpaths[i].found == false){
 		error("no LC_RPATH load command with path: %s found in: "
 		      "%s (for architecture %s), required for specified option "
 		      "\"-rpath %s %s\"", rpaths[i].old, arch->file_name,
 		      arch_name, rpaths[i].old, rpaths[i].new);
 	    }
-	    rpaths[i].found = FALSE;
+	    rpaths[i].found = false;
 	}
 
 	for(i = 0; i < nadd_rpaths; i++){
@@ -863,7 +864,7 @@ uint32_t *header_size)
 	lc1 = arch->object->load_commands;
 	lc2 = new_load_commands;
 	for(i = 0; i < ncmds; i++){
-	    delete = FALSE;
+	    delete = false;
 	    switch(lc1->cmd){
 	    case LC_ID_DYLIB:
 		if(id != NULL){
@@ -950,22 +951,22 @@ uint32_t *header_size)
 		path1 = (char *)rpath1 + rpath1->path.offset;
 		for(j = 0; j < ndelete_rpaths; j++){
 		    if(strcmp(delete_rpaths[j].old, path1) == 0){
-			if(delete_rpaths[j].found == TRUE)
+			if(delete_rpaths[j].found == true)
 			    break;
-			delete_rpaths[j].found = TRUE;
-			delete = TRUE;
+			delete_rpaths[j].found = true;
+			delete = true;
 			break;
 		    }
 		}
-		if(delete == TRUE)
+		if(delete == true)
 		    break;
 		for(j = 0; j < nrpaths; j++){
 		    if(strcmp(rpaths[j].old, path1) == 0){
-			if(rpaths[j].found == TRUE){
+			if(rpaths[j].found == true){
 			    memcpy(lc2, lc1, lc1->cmdsize);
 			    break;
 			}
-			rpaths[j].found = TRUE;
+			rpaths[j].found = true;
 			memcpy(lc2, lc1, sizeof(struct rpath_command));
 			rpath2 = (struct rpath_command *)lc2;
 			rpath2->cmdsize = rnd(sizeof(struct rpath_command) +
@@ -987,7 +988,7 @@ uint32_t *header_size)
 		break;
 	    }
 	    lc1 = (struct load_command *)((char *)lc1 + lc1->cmdsize);
-	    if(delete == FALSE)
+	    if(delete == false)
 		lc2 = (struct load_command *)((char *)lc2 + lc2->cmdsize);
 	}
 	/*
@@ -1094,3 +1095,5 @@ uint32_t *header_size)
 	    lc1 = (struct load_command *)((char *)lc1 + lc1->cmdsize);
 	}
 }
+
+#endif

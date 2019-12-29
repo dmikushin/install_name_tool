@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.0)
 
 project(install_name_tool)
 
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
+
 file(GLOB SRCS "src/*.c" "src/*.cpp")
 
 add_executable(${PROJECT_NAME} ${SRCS})
