@@ -1694,8 +1694,10 @@ static void showHelp(const std::string & progName)
 
 static int patchElfCmdlineImpl(int argc, char** argv)
 {
-    if (argc <= 1)
+    if (argc <= 1) {
+	showHelp(argv[0]);
         return 1;
+    }
 
     if (getenv("PATCHELF_DEBUG") != 0) debugMode = true;
 
@@ -1796,7 +1798,11 @@ static int patchElfCmdlineImpl(int argc, char** argv)
     return 0;
 }
 
+#ifdef PATCHELF
+int main(int argc, char** argv)
+#else
 extern "C" int patchElfCmdline(int argc, char** argv) 
+#endif
 {
     try {
         return patchElfCmdlineImpl(argc, argv);
