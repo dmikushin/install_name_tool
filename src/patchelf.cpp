@@ -40,7 +40,6 @@
 
 #include "elf.h"
 
-
 static bool debugMode = false;
 
 static bool forceRPath = false;
@@ -200,6 +199,8 @@ public:
     typedef enum { rpPrint, rpShrink, rpSet, rpRemove } RPathOp;
 
     void modifyRPath(RPathOp op, const std::vector<std::string> & allowedRpathPrefixes, std::string newRPath);
+
+    std::string getRPath();
 
     void addNeeded(const std::set<std::string> & libs);
 
@@ -1129,6 +1130,47 @@ static void concatToRPath(std::string & rpath, const std::string & path)
     rpath += path;
 }
 
+template<ElfFileParams>
+std::string ElfFile<ElfFileParamNames>::getRPath()
+{
+    Elf_Shdr & shdrDynamic = findSection(".dynamic");
+
+    /* !!! We assume that the virtual address in the DT_STRTAB entry
+       of the dynamic section corresponds to the .dynstr section. */
+    Elf_Shdr & shdrDynStr = findSection(".dynstr");
+    char * strTab = (char *) contents + rdi(shdrDynStr.sh_offset);
+
+
+    /* Walk through the dynamic section, look for the RPATH/RUNPATH
+       entry.
+
+       According to the ld.so docs, DT_RPATH is obsolete, we should
+       use DT_RUNPATH.  DT_RUNPATH has two advantages: it can be
+       overriden by LD_LIBRARY_PATH, and it's scoped (the DT_RUNPATH
+       for an executable or library doesn't affect the search path for
+       libraries used by it).  DT_RPATH is ignored if DT_RUNPATH is
+       present.  The binutils 'ld' still generates only DT_RPATH,
+       unless you use its '--enable-new-dtag' option, in which case it
+       generates a DT_RPATH and DT_RUNPATH pointing at the same
+       string. */
+    Elf_Dyn * dyn = (Elf_Dyn *) (contents + rdi(shdrDynamic.sh_offset));
+    Elf_Dyn * dynRPath = 0, * dynRunPath = 0;
+    char * rpath = 0;
+    for ( ; rdi(dyn->d_tag) != DT_NULL; dyn++) {
+        if (rdi(dyn->d_tag) == DT_RPATH) {
+            dynRPath = dyn;
+            /* Only use DT_RPATH if there is no DT_RUNPATH. */
+            if (!dynRunPath)
+                rpath = strTab + rdi(dyn->d_un.d_val);
+        }
+        else if (rdi(dyn->d_tag) == DT_RUNPATH) {
+            dynRunPath = dyn;
+            rpath = strTab + rdi(dyn->d_un.d_val);
+        }
+    }
+    
+    return rpath ? (std::string)rpath : "";
+}
 
 template<ElfFileParams>
 void ElfFile<ElfFileParamNames>::modifyRPath(RPathOp op,
@@ -1625,7 +1667,7 @@ static void patchElf()
 }
 
 
-void showHelp(const std::string & progName)
+static void showHelp(const std::string & progName)
 {
         fprintf(stderr, "syntax: %s\n\
   [--set-interpreter FILENAME]\n\
@@ -1650,12 +1692,10 @@ void showHelp(const std::string & progName)
 }
 
 
-int mainWrapped(int argc, char * * argv)
+static int patchElfCmdlineImpl(int argc, char** argv)
 {
-    if (argc <= 1) {
-        showHelp(argv[0]);
+    if (argc <= 1)
         return 1;
-    }
 
     if (getenv("PATCHELF_DEBUG") != 0) debugMode = true;
 
@@ -1755,3 +1795,34 @@ int mainWrapped(int argc, char * * argv)
 
     return 0;
 }
+
+extern "C" int patchElfCmdline(int argc, char** argv) 
+{
+    try {
+        return patchElfCmdlineImpl(argc, argv);
+    } catch (std::exception & e) {
+        fprintf(stderr, "patchelf: %s\n", e.what());
+        return 1;
+    }
+}
+
+extern "C" int patchElfReadRpath(const char* fileName, char* rpath, unsigned int* szrpath)
+{
+	std::string result;
+    auto fileContents = readFile(fileName);
+    if (getElfType(fileContents).is32Bit)
+        result = ElfFile<Elf32_Ehdr, Elf32_Phdr, Elf32_Shdr, Elf32_Addr,
+        	Elf32_Off, Elf32_Dyn, Elf32_Sym, Elf32_Verneed>(fileContents).getRPath();
+    else
+        result = ElfFile<Elf64_Ehdr, Elf64_Phdr, Elf64_Shdr, Elf64_Addr,
+        	Elf64_Off, Elf64_Dyn, Elf64_Sym, Elf64_Verneed>(fileContents).getRPath();
+
+	unsigned int length = strlen(result.c_str());
+	if (!szrpath)
+		*szrpath = length;
+	if (rpath)
+		memcpy(rpath, result.c_str(), length);
+
+	return 0;
+}
+
