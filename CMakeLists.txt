@@ -17,8 +17,8 @@ target_compile_definitions(patchelf PRIVATE PATCHELF)
 add_library(test SHARED "src/test.cpp")
 
 # Check RPATH editing.
-set(CHECK1_OUT "${CMAKE_BINARY_DIR}/check1.out")
-set(CHECK1_REF "${CMAKE_SOURCE_DIR}/src/check1.ref")
+set(CHECK1_OUT "${CMAKE_CURRENT_BINARY_DIR}/check1.out")
+set(CHECK1_REF "${CMAKE_CURRENT_SOURCE_DIR}/src/check1.ref")
 add_custom_target(check1 ALL
 	COMMAND $<TARGET_FILE:patchelf> --set-rpath \"\" $<TARGET_FILE:test> >${CHECK1_OUT}
 	COMMAND $<TARGET_FILE:patchelf> --print-rpath $<TARGET_FILE:test> >>${CHECK1_OUT}
@@ -37,8 +37,8 @@ add_custom_target(check1 ALL
 add_dependencies(check1 patchelf test)
 
 # Check ldd-dependencies editing.
-set(CHECK2_OUT "${CMAKE_BINARY_DIR}/check2.out")
-set(CHECK2_REF "${CMAKE_SOURCE_DIR}/src/check2.ref")
+set(CHECK2_OUT "${CMAKE_CURRENT_BINARY_DIR}/check2.out")
+set(CHECK2_REF "${CMAKE_CURRENT_SOURCE_DIR}/src/check2.ref")
 add_custom_target(check2 ALL
 	COMMAND $<TARGET_FILE:${PROJECT_NAME}> -id \"libhelloid.so\" $<TARGET_FILE:test> >${CHECK2_OUT}
 	COMMAND $<TARGET_FILE:patchelf> --print-soname $<TARGET_FILE:test> >>${CHECK2_OUT}
