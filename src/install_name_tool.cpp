@@ -27,6 +27,8 @@
 #include <climits>
 #include <unistd.h>
 #include <fcntl.h>
+#include <regex>
+#include <sstream>
 #include <stdint.h>
 #include <vector>
 
@@ -332,7 +334,7 @@ char **envp)
 		const char* argv[] = { "", "--replace-needed", changes[i].cold, changes[i].cnew, input, NULL };
 		patchElfCmdline(sizeof(argv) / sizeof(argv[0]), const_cast<char**>(argv));
 	}
-	if (id) {
+	if (id){
 		const char* argv[] = { "", "--set-soname", id, input, NULL };
 		patchElfCmdline(sizeof(argv) / sizeof(argv[0]), const_cast<char**>(argv));
 	}
@@ -346,28 +348,50 @@ char **envp)
 	bool modified = false;
 
 	for (int i = 0; i < nrpaths; i++){
-		// TODO replace with regex
-		// rpaths[i].cold;
-		modified = true;
+		stringstream cold;
+		cold << "(^|:)";
+		cold << rpaths[i].cold;
+		cold << "(:|$)";
+ 
+ 		stringstream cnew;
+ 		cnew << "$1";
+ 		cnew << rpaths[i].cnew;
+ 		cnew << "$2";
+
+		string rpathNew = std::regex_replace(rpath, std::regex(cold.str()), cnew.str());
+		if (rpathNew != rpath){
+			rpath = rpathNew;
+			modified = true;
+		}
 	}
 
 	for (int i = 0; i < nadd_rpaths; i++){
-		rpath.append(":");
+		if (rpath.length()) rpath.append(":");
 		rpath.append(add_rpaths[i].cnew);
 		modified = true;
 	}
 
 	for (int i = 0; i < ndelete_rpaths; i++){
-		// TODO remove with regex
-		// delete_rpaths[i].cold;
-		modified = true;
+		stringstream cold;
+		cold << "(^|:)";
+		cold << delete_rpaths[i].cold;
+		cold << "(:|$)";
+ 
+ 		stringstream cnew;
+ 		cnew << "$1";
+ 		cnew << "$2";
+
+		string rpathNew = std::regex_replace(rpath, std::regex(cold.str()), cnew.str());
+		if (rpathNew != rpath){
+			rpath = rpathNew;
+			modified = true;
+		}
 	}
 	
-	// TODO Delete duplicate colons with regex.
-
-	if (modified)
-	{
-		// TODO Set the modified RPATH.
+	if (modified){
+		const char* crpath = rpath.c_str();
+		const char* argv[] = { "", "--set-rpath", crpath, input, NULL };
+		patchElfCmdline(sizeof(argv) / sizeof(argv[0]), const_cast<char**>(argv));
 	}
 
 	return(EXIT_SUCCESS);
