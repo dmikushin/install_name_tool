@@ -36,5 +36,18 @@ add_custom_target(check1 ALL
 )
 add_dependencies(check1 patchelf test)
 
-# TODO Check ldd-dependencies editing.
+# Check ldd-dependencies editing.
+set(CHECK2_OUT "${CMAKE_BINARY_DIR}/check2.out")
+set(CHECK2_REF "${CMAKE_SOURCE_DIR}/src/check2.ref")
+add_custom_target(check2 ALL
+	COMMAND $<TARGET_FILE:${PROJECT_NAME}> -id \"libhelloid.so\" $<TARGET_FILE:test> >${CHECK2_OUT}
+	COMMAND $<TARGET_FILE:patchelf> --print-soname $<TARGET_FILE:test> >>${CHECK2_OUT}
+	COMMAND $<TARGET_FILE:patchelf> --add-needed \"libreplaceme.so\" $<TARGET_FILE:test> >>${CHECK2_OUT}
+	COMMAND $<TARGET_FILE:patchelf> --print-needed $<TARGET_FILE:test> >>${CHECK2_OUT}
+	COMMAND $<TARGET_FILE:${PROJECT_NAME}> -change \"libreplaceme.so\" \"libsuccess.so\" $<TARGET_FILE:test> >>${CHECK2_OUT}
+	COMMAND $<TARGET_FILE:patchelf> --print-needed $<TARGET_FILE:test> >>${CHECK2_OUT}
+	COMMAND $<TARGET_FILE:patchelf> --remove-needed \"libsuccess.so\" $<TARGET_FILE:test> >>${CHECK2_OUT}
+	COMMAND diff ${CHECK2_OUT} ${CHECK2_REF}
+)
+add_dependencies(check2 patchelf test)
 
