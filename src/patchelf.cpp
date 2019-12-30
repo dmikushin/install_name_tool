@@ -1824,7 +1824,7 @@ extern "C" int patchElfReadRpath(const char* fileName, char* rpath, unsigned int
         	Elf64_Off, Elf64_Dyn, Elf64_Sym, Elf64_Verneed>(fileContents).getRPath();
 
 	unsigned int length = strlen(result.c_str());
-	if (!szrpath)
+	if (szrpath)
 		*szrpath = length;
 	if (rpath)
 		memcpy(rpath, result.c_str(), length);

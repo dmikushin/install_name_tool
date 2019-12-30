@@ -332,11 +332,11 @@ char **envp)
 
 	for (int i = 0; i < nchanges; i++){
 		const char* argv[] = { "", "--replace-needed", changes[i].cold, changes[i].cnew, input, NULL };
-		patchElfCmdline(sizeof(argv) / sizeof(argv[0]), const_cast<char**>(argv));
+		patchElfCmdline(sizeof(argv) / sizeof(argv[0]) - 1, const_cast<char**>(argv));
 	}
 	if (id){
 		const char* argv[] = { "", "--set-soname", id, input, NULL };
-		patchElfCmdline(sizeof(argv) / sizeof(argv[0]), const_cast<char**>(argv));
+		patchElfCmdline(sizeof(argv) / sizeof(argv[0]) - 1, const_cast<char**>(argv));
 	}
 
 	unsigned int szrpath = 0;
@@ -358,10 +358,14 @@ char **envp)
  		cnew << rpaths[i].cnew;
  		cnew << "$2";
 
-		string rpathNew = std::regex_replace(rpath, std::regex(cold.str()), cnew.str());
-		if (rpathNew != rpath){
-			rpath = rpathNew;
-			modified = true;
+		while (1)
+		{
+			string rpathNew = std::regex_replace(rpath, std::regex(cold.str()), cnew.str());
+			if (rpathNew != rpath){
+				rpath = rpathNew;
+				modified = true;
+			}
+			else break;
 		}
 	}
 
@@ -381,17 +385,36 @@ char **envp)
  		cnew << "$1";
  		cnew << "$2";
 
-		string rpathNew = std::regex_replace(rpath, std::regex(cold.str()), cnew.str());
-		if (rpathNew != rpath){
-			rpath = rpathNew;
-			modified = true;
+		while (1)
+		{
+			string rpathNew = std::regex_replace(rpath, std::regex(cold.str()), cnew.str());
+			if (rpathNew != rpath){
+				rpath = rpathNew;
+				modified = true;
+			}
+			else break;
 		}
 	}
 	
 	if (modified){
+	
+		// Remove duplicate colons.
+		while (1)
+		{
+			string rpathNew = std::regex_replace(rpath, std::regex("::"), ":");
+			if (rpathNew != rpath){
+				rpath = rpathNew;
+				modified = true;
+			}
+			else break;
+		}
+		
+		// If only a single colon remaining, pass an empty RPATH.
+		if (rpath == ":") rpath = "";
+	
 		const char* crpath = rpath.c_str();
 		const char* argv[] = { "", "--set-rpath", crpath, input, NULL };
-		patchElfCmdline(sizeof(argv) / sizeof(argv[0]), const_cast<char**>(argv));
+		patchElfCmdline(sizeof(argv) / sizeof(argv[0]) - 1, const_cast<char**>(argv));
 	}
 
 	return(EXIT_SUCCESS);
