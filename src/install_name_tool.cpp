@@ -413,7 +413,7 @@ char **envp)
 		if (rpath == ":") rpath = "";
 	
 		const char* crpath = rpath.c_str();
-		const char* argv[] = { "", "--set-rpath", crpath, input, NULL };
+		const char* argv[] = { "", "--force-rpath", "--set-rpath", crpath, input, NULL };
 		patchElfCmdline(sizeof(argv) / sizeof(argv[0]) - 1, const_cast<char**>(argv));
 	}
 
